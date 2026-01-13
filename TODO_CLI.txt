@@ -1,0 +1,32 @@
+must be able to
+- must use ts as default files (use tsx for this)
+- use ESmodules as default
+- built for postgres (as default) but allow other dbs
+- new cli file called sequelizerunner.ts
+
+must have those commands:
+- db:create
+- db:drop
+- db:migrate (next)
+- db:migrate:all (all next)
+- db:migrate:undo (next)
+- db:migrate:undo:all (all next)
+- db:seed (next)
+- db:seed:all (all next)
+- db:seed:undo (next)
+- db:seed:undo:all (all next)
+- db:ping
+- db:reset (drop + create + migrate:all + seed:all) (must confirm)
+- migration:create
+- seed:create
+
+- migration/seed functions:
+    - inject transaction on up and down functions
+    - create file
+    - run up
+    - run down
+    - inject sequelize and datatypes
+
+future tags:
+- migration and seed from start file to end file
+- re run flag to ignore if they are already run
