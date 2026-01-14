@@ -1,25 +1,32 @@
+import type {
+	RunFileExport,
+	RunnerConfig,
+	SequelizeInstanceOptions,
+} from "./@types/_export.js";
 import { dbCreate } from "./commands/db-create.js";
 import { dbDrop } from "./commands/db-drop.js";
 import { dbMigrationAllDown } from "./commands/db-migrate-all-down.js";
 import { dbMigrationAllUp } from "./commands/db-migrate-all-up.js";
-import { dbMigrationLastDown } from "./commands/db-migrate-last-down.js";
-import { dbMigrationLastUp } from "./commands/db-migrate-last-up.js";
+import { dbMigrationNextDown } from "./commands/db-migrate-next-down.js";
+import { dbMigrationNextUp } from "./commands/db-migrate-next-up.js";
 import { dbSeedAllDown } from "./commands/db-seed-all-down.js";
 import { dbSeedAllUp } from "./commands/db-seed-all-up.js";
-import { dbSeedLastDown } from "./commands/db-seed-last-down.js";
-import { dbSeedLastUp } from "./commands/db-seed-last-up.js";
+import { dbSeedNextDown } from "./commands/db-seed-next-down.js";
+import { dbSeedNextUp } from "./commands/db-seed-next-up.js";
 import { migrationCreate } from "./commands/migration-create.js";
+
+export type { RunFileExport, RunnerConfig, SequelizeInstanceOptions };
 
 export {
 	dbCreate,
 	dbDrop,
 	dbMigrationAllDown,
 	dbMigrationAllUp,
-	dbMigrationLastDown,
-	dbMigrationLastUp,
+	dbMigrationNextDown,
+	dbMigrationNextUp,
 	dbSeedAllDown,
 	dbSeedAllUp,
-	dbSeedLastDown,
-	dbSeedLastUp,
+	dbSeedNextDown,
+	dbSeedNextUp,
 	migrationCreate,
 };

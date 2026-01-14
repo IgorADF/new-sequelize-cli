@@ -27,11 +27,13 @@ export async function migrationCreate() {
 	}
 }
 
-const fileTemplate = `const Migration = {
-    up: async () => {
+const fileTemplate = `import { type RunFileExport } from 'sequelize-runner'
+
+const _: RunFileExport = {
+    up: async (queryInterface, transaction) => {
     },
-    down: async () => {
+    down: async (queryInterface, transaction) => {
     }
 }
 
-export default Migration`;
+export default _`;

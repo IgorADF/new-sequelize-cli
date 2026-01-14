@@ -5,13 +5,7 @@
   "type": "module",
   "main": "dist/_export.js",
   "module": "dist/_export.js",
-  "types": "dist/@types/_export.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/_export.js",
-      "types": "./dist/@types/_export.d.ts"
-    }
-  },
+  "types": "dist/_export.d.ts",
   "files": [
     "dist"
   ],

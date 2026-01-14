@@ -25,7 +25,7 @@ const seedConfig: ConfigType = {
 
 type DbRunType = "seed" | "migration";
 type DbRunRunningDirection = "up" | "down";
-type DbRunRunningType = "all" | "last";
+type DbRunRunningType = "all" | "next";
 
 export async function dbRun(
 	type: DbRunType,
@@ -36,19 +36,17 @@ export async function dbRun(
 		const { instance, runnerConfig } = await createSequelizeInstance();
 
 		const config = getConfigByRunType(type);
-		const filesToSkip = await readDb(instance, config);
+		const filesRunnedInsideDb = await readDb(instance, config);
 
 		const pathToFolder = getFolderPathByRunType(type, runnerConfig);
-		let folderFiles = await readFromFolder(pathToFolder, runningType);
-		if (runningDirection === "down") {
-			folderFiles = folderFiles.toReversed();
-		}
+		const folderFiles = await readFromFolder(pathToFolder);
 
-		const filesToRun = folderFiles.filter(
-			(file) =>
-				!filesToSkip.find(
-					(filesToSkip) => filesToSkip[config.columnName] === file,
-				),
+		const filesToRun = await getFilesToRun(
+			folderFiles,
+			filesRunnedInsideDb,
+			runningType,
+			runningDirection,
+			config,
 		);
 
 		await run(instance, filesToRun, pathToFolder, runningDirection, config);
@@ -90,15 +88,14 @@ function verifyTableExist(instance: Sequelize, tableName: string) {
 }
 
 function createTable(instance: Sequelize, tableConfig: ConfigType) {
-	return instance.getQueryInterface().createTable(tableConfig.tableName, [
-		{
-			field: tableConfig.columnName,
+	return instance.getQueryInterface().createTable(tableConfig.tableName, {
+		[tableConfig.columnName]: {
 			type: DataType.STRING,
 			unique: true,
 			allowNull: false,
 			primaryKey: true,
 		},
-	] as any);
+	});
 }
 
 async function readDb(instance: Sequelize, config: ConfigType) {
@@ -116,21 +113,48 @@ async function readDb(instance: Sequelize, config: ConfigType) {
 	return data as { [key: string]: string }[];
 }
 
-async function readFromFolder(
-	pathToFolder: string,
-	fileType: DbRunRunningType,
-) {
+async function readFromFolder(pathToFolder: string) {
 	pathToFolder = path.resolve(pathToFolder);
 
-	let folderFiles = fs
+	return fs
 		.readdirSync(pathToFolder)
 		.filter((file) => file.endsWith(".js") || file.endsWith(".ts"));
+}
 
-	if (fileType === "last") {
-		folderFiles = folderFiles.slice(-1);
+async function getFilesToRun(
+	folderFiles: string[],
+	filesRunnedInsideDb: { [key: string]: string }[],
+	fileType: DbRunRunningType,
+	runningDirection: DbRunRunningDirection,
+	config: ConfigType,
+) {
+	let filesToRun = folderFiles.filter((file) => {
+		return runningDirection === "up"
+			? !filesRunnedInsideDb.find(
+					(filesToSkip) => filesToSkip[config.columnName] === file,
+				)
+			: filesRunnedInsideDb.find(
+					(filesToSkip) => filesToSkip[config.columnName] === file,
+				);
+	});
+
+	if (fileType === "next") {
+		if (runningDirection === "down") {
+			filesToRun = filesToRun.slice(-1);
+		} else if (runningDirection === "up") {
+			filesToRun = filesToRun.slice(0, 1);
+		} else {
+			throw new SequelizeRunnerDefaultError(
+				`Invalid runningDirection provided to readFromFolder: ${runningDirection}`,
+			);
+		}
 	}
 
-	return folderFiles;
+	if (runningDirection === "down") {
+		filesToRun = filesToRun.toReversed();
+	}
+
+	return filesToRun;
 }
 
 function createRecord(
@@ -139,8 +163,24 @@ function createRecord(
 	config: ConfigType,
 	transaction: Transaction,
 ) {
-	return instance.getQueryInterface().insert(
-		null,
+	return instance.getQueryInterface().bulkInsert(
+		config.tableName,
+		[
+			{
+				[config.columnName]: fileName,
+			},
+		],
+		{ transaction },
+	);
+}
+
+function removeRecord(
+	instance: Sequelize,
+	fileName: string,
+	config: ConfigType,
+	transaction: Transaction,
+) {
+	return instance.getQueryInterface().bulkDelete(
 		config.tableName,
 		{
 			[config.columnName]: fileName,
@@ -178,17 +218,20 @@ async function run(
 		try {
 			if (type === "up") {
 				await up(instance.getQueryInterface(), transaction);
+				await createRecord(instance, fileName, config, transaction);
 			} else if (type === "down") {
 				await down(instance.getQueryInterface(), transaction);
+				await removeRecord(instance, fileName, config, transaction);
 			} else {
 				throw new SequelizeRunnerDefaultError(`Invalid type: ${type}`);
 			}
 
-			await createRecord(instance, fileName, config, transaction);
-
 			await transaction.commit();
-		} catch {
+		} catch (err) {
 			await transaction.rollback();
+			throw new SequelizeRunnerDefaultError(
+				`Error running file: ${filePath}: ${(err as Error)?.message ?? ""}`,
+			);
 		}
 	}
 }

@@ -6,11 +6,11 @@
     "module": "node16",
     "moduleResolution": "node16",
     "declaration": true,
+    "declarationMap": true,
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true,
 
     "rootDir": "./src",
     "experimentalDecorators": true,
