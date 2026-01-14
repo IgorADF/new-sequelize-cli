@@ -17,7 +17,7 @@ must have those commands:
 - db:seed:undo:all (all next)
 - db:ping
 - db:reset (drop + create + migrate:all + seed:all) (must confirm)
-- migration:create
+- migration:create (migration name = Data + sequential number)
 - seed:create
 
 - migration/seed functions:
@@ -27,6 +27,7 @@ must have those commands:
     - run down
     - inject sequelize and datatypes
 
-future tags:
+future 
+tags:
 - migration and seed from start file to end file
 - re run flag to ignore if they are already run
