@@ -2,7 +2,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { SequelizeRunnerDefaultError } from "./errors/_default.js";
-import { ReadFileError } from "./errors/read-file.js";
+import { ImportFileError } from "./errors/import-file.js";
 
 const runnerFileDefaultName = "sequelize-runner.ts";
 
@@ -20,7 +20,7 @@ export async function readAndGetRunnerFile() {
 	try {
 		runnerFile = await import(pathToFileURL(runnerFilePath).href); // Or use url?
 	} catch {
-		throw new ReadFileError(
+		throw new ImportFileError(
 			`Could not import runner file at path: ${runnerFilePath}`,
 		);
 	}

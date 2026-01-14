@@ -4,8 +4,8 @@ import { pathToFileURL } from "node:url";
 import type { Transaction } from "sequelize";
 import { DataType, type Sequelize } from "sequelize-typescript";
 import type { RunFileExport } from "../@types/run-file-export.js";
+import type { RunnerConfig } from "../@types/runner-config.js";
 import { SequelizeRunnerDefaultError } from "../errors/_default.js";
-import type { RunnerConfig } from "../runner-file.js";
 import { createSequelizeInstance } from "../sequelize-instance.js";
 
 type ConfigType = {
