@@ -14,6 +14,7 @@ import { dbSeedAllUp } from "./commands/db-seed-all-up.js";
 import { dbSeedNextDown } from "./commands/db-seed-next-down.js";
 import { dbSeedNextUp } from "./commands/db-seed-next-up.js";
 import { migrationCreate } from "./commands/migration-create.js";
+import { seedCreate } from "./commands/seed-create.js";
 
 export type { RunFileExport, RunnerConfig, SequelizeInstanceOptions };
 
@@ -29,4 +30,5 @@ export {
 	dbSeedNextDown,
 	dbSeedNextUp,
 	migrationCreate,
+	seedCreate,
 };

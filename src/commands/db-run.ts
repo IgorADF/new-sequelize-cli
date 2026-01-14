@@ -3,6 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { Transaction } from "sequelize";
 import { DataType, type Sequelize } from "sequelize-typescript";
+import type { DbRunType } from "../@types/db-run-type.js";
 import type { RunFileExport } from "../@types/run-file-export.js";
 import type { RunnerConfig } from "../@types/runner-config.js";
 import { SequelizeRunnerDefaultError } from "../errors/_default.js";
@@ -23,7 +24,6 @@ const seedConfig: ConfigType = {
 	columnName: "name",
 } as const;
 
-type DbRunType = "seed" | "migration";
 type DbRunRunningDirection = "up" | "down";
 type DbRunRunningType = "all" | "next";
 
@@ -36,11 +36,10 @@ export async function dbRun(
 		const { instance, runnerConfig } = await createSequelizeInstance();
 
 		const config = getConfigByRunType(type);
-		const filesRunnedInsideDb = await readDb(instance, config);
-
 		const pathToFolder = getFolderPathByRunType(type, runnerConfig);
-		const folderFiles = await readFromFolder(pathToFolder);
 
+		const filesRunnedInsideDb = await createAndReadDb(instance, config);
+		const folderFiles = await readFilesFromFolder(pathToFolder);
 		const filesToRun = await getFilesToRun(
 			folderFiles,
 			filesRunnedInsideDb,
@@ -98,7 +97,7 @@ function createTable(instance: Sequelize, tableConfig: ConfigType) {
 	});
 }
 
-async function readDb(instance: Sequelize, config: ConfigType) {
+async function createAndReadDb(instance: Sequelize, config: ConfigType) {
 	const doesTableExist = await verifyTableExist(instance, config.tableName);
 
 	if (!doesTableExist) {
@@ -113,7 +112,7 @@ async function readDb(instance: Sequelize, config: ConfigType) {
 	return data as { [key: string]: string }[];
 }
 
-async function readFromFolder(pathToFolder: string) {
+async function readFilesFromFolder(pathToFolder: string) {
 	pathToFolder = path.resolve(pathToFolder);
 
 	return fs
