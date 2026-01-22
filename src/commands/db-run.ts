@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { QueryTypes, type Transaction } from "sequelize";
-import type { Sequelize } from "sequelize-typescript";
+import { DataType, type Sequelize } from "sequelize-typescript";
 import type { DbRunType } from "../@types/db-run-type.js";
 import type { RunFileExport } from "../@types/run-file-export.js";
 import type { RunnerConfig } from "../@types/runner-config.js";
@@ -40,7 +40,9 @@ export async function dbRun(
 		const config = getConfigByRunType(type);
 		const pathToFolder = getFolderPathByRunType(type, runnerConfig);
 
-		const filesRunnedInsideDb = await createAndReadDb(instance, config);
+		const schema = instance?.options?.schema || defaultPostgresSchema;
+
+		const filesRunnedInsideDb = await createAndReadDb(instance, config, schema);
 		const folderFiles = await readFilesFromFolder(pathToFolder);
 		const filesToRun = await getFilesToRun(
 			folderFiles,
@@ -50,7 +52,14 @@ export async function dbRun(
 			config,
 		);
 
-		await run(instance, filesToRun, pathToFolder, runningDirection, config);
+		await run(
+			instance,
+			filesToRun,
+			pathToFolder,
+			runningDirection,
+			config,
+			schema,
+		);
 
 		await instance.close();
 	} catch (error) {
@@ -89,23 +98,22 @@ async function verifyTableExist(
 	config: ConfigType,
 	schema: string,
 ) {
-	const tableName = config.tableName;
+	// const tableName = config.tableName;
 
-	const query = `SELECT table_name FROM information_schema.tables WHERE table_schema = '${schema}' AND table_name = '${tableName}'`;
+	// const query = `SELECT table_name FROM information_schema.tables WHERE table_schema = '${schema}' AND table_name = '${tableName}'`;
 
-	const result = await instance.query(query, { type: QueryTypes.SELECT });
-	const tableExist = result.length > 0;
+	// const result = await instance.query(query, { type: QueryTypes.SELECT });
+	// const tableExist = result.length > 0;
 
-	if (tableExist) {
-		return;
-	}
+	// if (tableExist) {
+	// 	return;
+	// }
 
 	await createTable(instance, config, schema);
 }
 
 async function createSchema(instance: Sequelize, schemaName: string) {
-	const query = `CREATE SCHEMA IF NOT EXISTS "${schemaName}"`;
-	await instance.query(query);
+	await instance.getQueryInterface().createSchema(schemaName);
 }
 
 async function verifyAndCreateTableSchema(
@@ -113,7 +121,12 @@ async function verifyAndCreateTableSchema(
 	config: ConfigType,
 	schema: string,
 ) {
-	if (!schema || schema === defaultPostgresSchema) {
+	if (!schema) {
+		schema = defaultPostgresSchema;
+	}
+
+	if (schema === defaultPostgresSchema) {
+		schema = defaultPostgresSchema;
 		await verifyTableExist(instance, config, schema);
 		return;
 	}
@@ -126,6 +139,7 @@ async function verifyAndCreateTableSchema(
 	}
 
 	await verifyTableExist(instance, config, schema);
+	return;
 }
 
 function formatTableAndSchemaName(
@@ -140,9 +154,18 @@ async function createTable(
 	config: ConfigType,
 	schema: string,
 ) {
-	const formattedTableName = formatTableAndSchemaName(schema, config.tableName);
-	const query = `CREATE TABLE IF NOT EXISTS ${formattedTableName} ("${config.columnName}" VARCHAR(255) NOT NULL UNIQUE , PRIMARY KEY ("${config.columnName}"));`;
-	await instance.query(query);
+	await instance.getQueryInterface().createTable(
+		config.tableName,
+		{
+			[config.columnName]: {
+				type: DataType.STRING,
+				allowNull: false,
+				unique: true,
+				primaryKey: true,
+			},
+		},
+		{ schema } as any,
+	);
 }
 
 async function getTableData(
@@ -150,21 +173,30 @@ async function getTableData(
 	config: ConfigType,
 	schema: string,
 ) {
-	const formattedTableName = formatTableAndSchemaName(schema, config.tableName);
+	// const formattedTableName = formatTableAndSchemaName(schema, config.tableName);
 
-	const query = `SELECT * FROM ${formattedTableName}`;
-	const result = await instance.query(query, { type: QueryTypes.SELECT });
+	// const query = `SELECT * FROM ${formattedTableName}`;
+	// const result = await instance.query(query, { type: QueryTypes.SELECT });
 
-	return result;
+	const data = (await instance.getQueryInterface().rawSelect(
+		config.tableName,
+		{
+			schema,
+		} as any,
+		[config.columnName],
+	)) as unknown[];
+
+	return data;
 }
 
-async function createAndReadDb(instance: Sequelize, config: ConfigType) {
-	// const schema = instance.options.schema || defaultPostgresSchema;
-	const schema = defaultPostgresSchema;
-
+async function createAndReadDb(
+	instance: Sequelize,
+	config: ConfigType,
+	schema: string,
+) {
 	await verifyAndCreateTableSchema(instance, config, schema);
-	const data = await getTableData(instance, config, schema);
 
+	const data = await getTableData(instance, config, schema);
 	return data as { [key: string]: string }[];
 }
 
@@ -250,6 +282,7 @@ async function run(
 	folderPath: string,
 	type: DbRunRunningDirection,
 	config: ConfigType,
+	schemaName: string,
 ) {
 	for (const fileName of filesToRun) {
 		const filePath = path.join(folderPath, fileName);
@@ -272,10 +305,10 @@ async function run(
 
 		try {
 			if (type === "up") {
-				await up(instance.getQueryInterface(), transaction);
+				await up(instance.getQueryInterface(), transaction, schemaName);
 				await createRecord(instance, fileName, config, transaction);
 			} else if (type === "down") {
-				await down(instance.getQueryInterface(), transaction);
+				await down(instance.getQueryInterface(), transaction, schemaName);
 				await removeRecord(instance, fileName, config, transaction);
 			} else {
 				throw new SequelizeRunnerDefaultError(`Invalid type: ${type}`);

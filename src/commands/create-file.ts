@@ -11,9 +11,9 @@ const newMigrationFileTimestampFormat = "yyyy_MM_dd_HH_mm_ss";
 const fileTemplate = `import { type RunFileExport } from 'sequelize-runner'
 
 const _: RunFileExport = {
-    up: async (queryInterface, transaction) => {
+    up: async (queryInterface, transaction, schema) => {
     },
-    down: async (queryInterface, transaction) => {
+    down: async (queryInterface, transaction, schema) => {
     }
 }
 
